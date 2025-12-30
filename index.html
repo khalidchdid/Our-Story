@@ -7,40 +7,34 @@
 
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Pong" />
+  <meta name="apple-mobile-web-app-title" content="Toy story" />
 
-  <title>Pong (Offline PWA)</title>
+  <title>Toy story</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <!-- Only visible during play: Streak -->
-  <div id="streakHud"><span id="streak">0</span></div>
-
-  <!-- Start / Game Over overlay -->
-  <div id="overlay" class="overlay">
-    <div class="card">
-      <div class="title">Pong</div>
-
-      <div class="scores">
-        <div class="scoreRow">
-          <span class="label">Last</span>
-          <span class="value" id="lastScore">0</span>
-        </div>
-        <div class="scoreRow">
-          <span class="label">Best</span>
-          <span class="value" id="bestScore">0</span>
-        </div>
-      </div>
-
-      <button id="startBtn">Start</button>
-      <div class="tiny">Tip: drag your finger to move</div>
+<body class="home">
+  <div class="homeWrap">
+    <div class="homeHeader">
+      <div class="homeTitle">Toy story</div>
+      <div class="homeSubtitle">Choose a game</div>
     </div>
+
+    <div class="grid">
+      <a class="gameCard" href="./pong.html">
+        <div class="gameName">Pong</div>
+        <div class="gameHint">Drag to move • Beat the AI</div>
+      </a>
+
+      <a class="gameCard" href="./jumper.html">
+        <div class="gameName">Jumper</div>
+        <div class="gameHint">Tap to jump • Endless runner</div>
+      </a>
+    </div>
+
+    <div class="footerTiny">More games soon.</div>
   </div>
 
-  <canvas id="game" aria-label="Pong game canvas"></canvas>
-
-  <script src="game.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./service-worker.js");
