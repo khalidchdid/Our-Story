@@ -87,10 +87,21 @@
 
   let state = null;
 
+  // Visible border line positions (in canvas pixels)
+  function topLineY() {
+    return 0;
+  }
+  function bottomLineY() {
+    // Put it clearly ABOVE the iPhone home indicator area
+    // (use 10% of height or minimum 60px, capped so it doesn't go too high)
+    const y = state.H - Math.max(60, Math.floor(state.H * 0.10));
+    return Math.max(state.H * 0.70, y); // don't go above 70% of screen
+  }
+
   function resetBall(towardsPlayer = false) {
     const { W, H, ball } = state;
     ball.x = W * 0.5;
-    ball.y = H * 0.5;
+    ball.y = (topLineY() + bottomLineY()) / 2;
 
     const dir = towardsPlayer ? -1 : Math.random() < 0.5 ? -1 : 1;
     const base = Math.max(W, H) * 0.45;
@@ -104,9 +115,8 @@
     setStreak(0);
     resetBall(false);
 
-    // Ensure paddles start centered
-    state.player.y = Math.floor(state.H * 0.5 - state.player.h * 0.5);
-    state.ai.y = Math.floor(state.H * 0.5 - state.ai.h * 0.5);
+    state.player.y = Math.floor((topLineY() + bottomLineY()) * 0.5 - state.player.h * 0.5);
+    state.ai.y = Math.floor((topLineY() + bottomLineY()) * 0.5 - state.ai.h * 0.5);
   }
 
   // ---------- Touch controls (no jump on first touch) ----------
@@ -117,19 +127,16 @@
   }
 
   let dragging = false;
-  let dragStartY = 0;   // finger start (canvas coords)
-  let paddleStartY = 0; // paddle y at touch start
+  let dragStartY = 0;
+  let paddleStartY = 0;
 
   canvas.addEventListener("pointerdown", (e) => {
     if (mode !== "playing") return;
     dragging = true;
     canvas.setPointerCapture(e.pointerId);
 
-    // Store start positions ONLY — do NOT move paddle here
     dragStartY = canvasToLocalY(e.clientY);
     paddleStartY = state.player.y;
-
-    // Disable target follow mode while dragging
     state.player.targetY = null;
   });
 
@@ -139,8 +146,11 @@
     const y = canvasToLocalY(e.clientY);
     const dy = y - dragStartY;
 
-    // Move paddle by finger displacement (no initial jump)
-    state.player.y = clamp(paddleStartY + dy, 0, state.H - state.player.h);
+    state.player.y = clamp(
+      paddleStartY + dy,
+      topLineY(),
+      bottomLineY() - state.player.h
+    );
   });
 
   canvas.addEventListener("pointerup", () => {
@@ -163,7 +173,7 @@
   }
 
   function bounceOffPaddle(p, isPlayer) {
-    const { ball, H } = state;
+    const { ball } = state;
 
     if (isPlayer) ball.x = p.x + p.w + ball.r + 1;
     else ball.x = p.x - ball.r - 1;
@@ -181,9 +191,6 @@
 
     ball.vx = dir * newSpeed * Math.cos(angle);
     ball.vy = newSpeed * Math.sin(angle);
-
-    const cap = H * 1.2;
-    ball.vy = clamp(ball.vy, -cap, cap);
   }
 
   // ---------- Game logic ----------
@@ -195,18 +202,14 @@
   }
 
   function update(dt) {
-    const { W, H, player, ai, ball } = state;
+    const { W, player, ai, ball } = state;
+    const TOP = topLineY();
+    const BOTTOM = bottomLineY();
 
-    // Player target-follow mode (only used if targetY is set; we keep it null during drag)
-    if (player.targetY != null) {
-      const target = player.targetY - player.h / 2;
-      const dy = target - player.y;
-      const maxStep = player.speed * dt;
-      player.y += clamp(dy, -maxStep, maxStep);
-    }
-    player.y = clamp(player.y, 0, H - player.h);
+    // Keep paddles within visible play area
+    player.y = clamp(player.y, TOP, BOTTOM - player.h);
 
-    // AI follows ball with lag + noise
+    // AI follow
     ai.reactTimer -= dt;
     if (ai.reactTimer <= 0) {
       ai.reactTimer = ai.reaction;
@@ -217,18 +220,18 @@
     const aiDy = aiTarget - ai.y;
     const aiStep = ai.speed * dt;
     ai.y += clamp(aiDy, -aiStep, aiStep);
-    ai.y = clamp(ai.y, 0, H - ai.h);
+    ai.y = clamp(ai.y, TOP, BOTTOM - ai.h);
 
     // Ball
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
 
-    // Wall bounce (top/bottom)
-    if (ball.y - ball.r <= 0) {
-      ball.y = ball.r + 1;
+    // Bounce within visible play area
+    if (ball.y - ball.r <= TOP) {
+      ball.y = TOP + ball.r + 1;
       ball.vy *= -1;
-    } else if (ball.y + ball.r >= H) {
-      ball.y = H - ball.r - 1;
+    } else if (ball.y + ball.r >= BOTTOM) {
+      ball.y = BOTTOM - ball.r - 1;
       ball.vy *= -1;
     }
 
@@ -240,11 +243,10 @@
       bounceOffPaddle(ai, false);
     }
 
-    // Miss: player loses -> show overlay
+    // Miss
     if (ball.x + ball.r < 0) {
       gameOver();
     } else if (ball.x - ball.r > W) {
-      // AI misses: reward +2 and keep playing
       setStreak(streak + 2);
       resetBall(false);
     }
@@ -253,32 +255,24 @@
   // ---------- Rendering ----------
   function draw() {
     const { W, H, player, ai, ball } = state;
+    const TOP = topLineY();
+    const BOTTOM = bottomLineY();
 
     // Background
     ctx.fillStyle = "#0b0f14";
     ctx.fillRect(0, 0, W, H);
 
-    // TOP + BOTTOM borders (make bottom unmistakable on iPhone)
+    // Borders: top and clearly-raised bottom
     ctx.save();
     ctx.globalAlpha = 1.0;
     ctx.fillStyle = "#e7edf6";
-
-// Make borders thicker so they pop
     const borderH = Math.max(6, Math.floor(H * 0.01));
 
-// Slight glow so it’s visible even on dark screens
-    ctx.shadowColor = "#e7edf6";
-    ctx.shadowBlur = Math.max(6, Math.floor(H * 0.01));
+    // Top line
+    ctx.fillRect(0, TOP, W, borderH);
 
-// Top border (true top)
-    ctx.fillRect(0, 0, W, borderH);
-
-// Bottom border (true bottom)
-    ctx.fillRect(0, H - borderH, W, borderH);
-
-// Extra “safety” bottom line ABOVE the home-indicator zone
-    const safeInset = Math.max(24, Math.floor(34 * (window.devicePixelRatio || 1)));
-    ctx.fillRect(0, H - safeInset - borderH, W, borderH);
+    // Bottom line (raised)
+    ctx.fillRect(0, BOTTOM - borderH, W, borderH);
 
     ctx.restore();
 
@@ -340,7 +334,6 @@
   setStreak(0);
 
   state = makeGame();
-  showOverlay(true); // show start screen immediately
-
+  showOverlay(true);
   requestAnimationFrame(loop);
 })();
