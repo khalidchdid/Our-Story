@@ -1,17 +1,18 @@
-const CACHE = "pong-pwa-v7";
+const CACHE = "toy-story-v1";
 const ASSETS = [
   "./",
   "./index.html",
+  "./pong.html",
+  "./jumper.html",
   "./style.css",
-  "./game.js",
+  "./pong.js",
+  "./jumper.js",
   "./manifest.webmanifest",
   "./service-worker.js"
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
-  );
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
   self.skipWaiting();
 });
 
@@ -27,12 +28,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((resp) => {
-        // Optional runtime caching
-        const copy = resp.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, copy));
-        return resp;
-      }).catch(() => caches.match("./index.html"));
+      return cached || fetch(event.request).catch(() => caches.match("./index.html"));
     })
   );
 });
