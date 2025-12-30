@@ -201,8 +201,8 @@
       groundY,
       groundThickness,
 
-      speed: Math.max(220, W * 0.28), // much slower start
-      accel: 10,                      // gentle ramp,                        // ramps speed over time
+      speed: Math.max(210, W * 0.26), // much slower start
+      accel: 9,                      // gentle ramp,                        // ramps speed over time
 
       gravity: Math.max(2600, H * 4.4),   // stronger gravity = less float
       jumpV: Math.max(560, H * 0.95),     // smaller jump impulse = lower jump
@@ -256,34 +256,32 @@
 
   function spawnObstacle() {
     const W = world.W;
-
-  // How many cacti in the group: 1..4
-    const countRoll = Math.random();
-    const count = countRoll < 0.60 ? 1 : countRoll < 0.82 ? 2 : countRoll < 0.94 ? 3 : 4;
-
-  // Base spacing between cacti (in pixels)
-    const baseGap = Math.max(world.px * 2, Math.floor(world.W * 0.006));
-
+  
+    // Only 1 or 2 cacti
+    const count = Math.random() < 0.72 ? 1 : 2;
+  
+    // Gap between the two if present
+    const gap = Math.max(world.px * 3, Math.floor(world.W * 0.008));
+  
     const cacti = [];
     let dx = 0;
     let groupRight = 0;
-
+  
     for (let k = 0; k < count; k++) {
-    // pick a shape
+      // pick a shape
       const r = Math.random();
       let map = CACTUS_SMALL;
-      if (r > 0.72) map = CACTUS_BIG;
-      if (r > 0.90) map = CACTUS_DOUBLE; // rare (wider)
-
-    // random height: scale factor (affects both width & height slightly, but height more via map choice)
-    // keep it subtle like real game
+      if (r > 0.68) map = CACTUS_BIG;
+      if (r > 0.92) map = CACTUS_DOUBLE; // rare wider cactus
+  
+      // HEIGHT variation: scale affects height (and width a bit, like the real game)
+      // Make it noticeable but not crazy:
       const heightScale = 0.85 + Math.random() * 0.55; // 0.85..1.40
       const scale = Math.max(1, Math.floor(world.px * heightScale));
-
+  
       const w = map[0].length * scale;
       const h = map.length * scale;
-
-    // place cactus with its own size
+  
       cacti.push({
         dx,
         y: world.groundY - h,
@@ -292,10 +290,26 @@
         map,
         scale,
       });
-
-      dx += w + baseGap;
+  
+      dx += w + gap;
       groupRight = dx;
-    }
+  }
+
+  // Add the group
+  world.obstacles.push({
+    x: W + 30,
+    cacti,
+    right: groupRight, // total width for offscreen removal
+  });
+
+  // Spawn timing (still depends on speed)
+  const speed = world.speed;
+  const baseMin = 0.85, baseMax = 1.55;
+  const speedFactor = clamp(520 / speed, 0.70, 1.25);
+  world.nextSpawn = clamp((baseMin + Math.random() * (baseMax - baseMin)) * speedFactor, 0.55, 1.8);
+  world.spawnT = 0;
+}
+
 
   world.obstacles.push({
     x: W + 30,
@@ -381,10 +395,9 @@
     if (world.obstacles.length === 0 && world.spawnT > 0.35) spawnObstacle();
     if (world.spawnT >= world.nextSpawn) spawnObstacle();
 
-    for (const ob of world.obstacles) ob.x -= world.speed * dt;
+    for (const g of world.obstacles) g.x -= world.speed * dt;
+    world.obstacles = world.obstacles.filter(g => g.x + g.right > -160);
 
-// remove offscreen groups using their total width
-    world.obstacles = world.obstacles.filter(ob => ob.x + ob.right > -160);
     // runner physics
     const r = world.runner;
 
@@ -427,9 +440,9 @@
       h: dinoH,
     };
 
-    for (const group of world.obstacles) {
-      for (const c of group.cacti) {
-        const box = { x: group.x + c.dx, y: c.y, w: c.w, h: c.h };
+    for (const g of world.obstacles) {
+      for (const c of g.cacti) {
+        const box = { x: g.x + c.dx, y: c.y, w: c.w, h: c.h };
         if (aabbHit(runnerBox, box)) {
           gameOver();
           return;
@@ -496,15 +509,9 @@
     ctx.globalAlpha = 1.0;
 
     // obstacles
-    for (const group of world.obstacles) {
-      for (const c of group.cacti) {
-        drawPixels(
-          c.map,
-          Math.floor(group.x + c.dx),
-          Math.floor(c.y),
-          c.scale,
-          FG
-        );
+    for (const g of world.obstacles) {
+      for (const c of g.cacti) {
+        drawPixels(c.map, Math.floor(g.x + c.dx), Math.floor(c.y), c.scale, FG);
       }
     }
 
