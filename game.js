@@ -245,15 +245,22 @@
     ctx.fillStyle = "#0b0f14";
     ctx.fillRect(0, 0, W, H);
 
+    
     // TOP + BOTTOM borders (clear)
     ctx.save();
     ctx.globalAlpha = 0.65;
     ctx.fillStyle = "#e7edf6";
     const borderH = Math.max(3, Math.floor(H * 0.006));
-    ctx.fillRect(0, 0, W, borderH);
-    ctx.fillRect(0, H - borderH, W, borderH);
-    ctx.restore();
 
+// Top border (exactly at top)
+    ctx.fillRect(0, 0, W, borderH);
+
+// Bottom border: draw slightly ABOVE the bottom so it's not hidden by the iPhone home indicator
+    const visInset = Math.floor(14 * (window.devicePixelRatio || 1)); // ~14px in device pixels
+    ctx.fillRect(0, H - visInset - borderH, W, borderH);
+
+    ctx.restore();
+    
     // Center dashed line
     ctx.save();
     ctx.globalAlpha = 0.25;
