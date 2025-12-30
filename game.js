@@ -258,18 +258,27 @@
     ctx.fillStyle = "#0b0f14";
     ctx.fillRect(0, 0, W, H);
 
-    // TOP + BOTTOM borders (clear; bottom moved slightly up so it's visible on iPhone)
+    // TOP + BOTTOM borders (make bottom unmistakable on iPhone)
     ctx.save();
-    ctx.globalAlpha = 0.65;
+    ctx.globalAlpha = 1.0;
     ctx.fillStyle = "#e7edf6";
-    const borderH = Math.max(3, Math.floor(H * 0.006));
 
-    // Top border
+// Make borders thicker so they pop
+    const borderH = Math.max(6, Math.floor(H * 0.01));
+
+// Slight glow so it’s visible even on dark screens
+    ctx.shadowColor = "#e7edf6";
+    ctx.shadowBlur = Math.max(6, Math.floor(H * 0.01));
+
+// Top border (true top)
     ctx.fillRect(0, 0, W, borderH);
 
-    // Bottom border (shifted up from the very bottom to avoid home-indicator area)
-    const visInset = Math.floor(14 * (window.devicePixelRatio || 1)); // device pixels
-    ctx.fillRect(0, H - visInset - borderH, W, borderH);
+// Bottom border (true bottom)
+    ctx.fillRect(0, H - borderH, W, borderH);
+
+// Extra “safety” bottom line ABOVE the home-indicator zone
+    const safeInset = Math.max(24, Math.floor(34 * (window.devicePixelRatio || 1)));
+    ctx.fillRect(0, H - safeInset - borderH, W, borderH);
 
     ctx.restore();
 
