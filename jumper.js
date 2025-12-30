@@ -382,8 +382,9 @@
     if (world.spawnT >= world.nextSpawn) spawnObstacle();
 
     for (const ob of world.obstacles) ob.x -= world.speed * dt;
-    world.obstacles = world.obstacles.filter(ob => ob.x + ob.w > -120);
 
+// remove offscreen groups using their total width
+    world.obstacles = world.obstacles.filter(ob => ob.x + ob.right > -160);
     // runner physics
     const r = world.runner;
 
@@ -426,10 +427,13 @@
       h: dinoH,
     };
 
-    for (const ob of world.obstacles) {
-      if (aabbHit(runnerBox, ob)) {
-        gameOver();
-        break;
+    for (const group of world.obstacles) {
+      for (const c of group.cacti) {
+        const box = { x: group.x + c.dx, y: c.y, w: c.w, h: c.h };
+        if (aabbHit(runnerBox, box)) {
+          gameOver();
+          return;
+        }
       }
     }
   }
@@ -492,8 +496,16 @@
     ctx.globalAlpha = 1.0;
 
     // obstacles
-    for (const ob of world.obstacles) {
-      drawPixels(ob.map, Math.floor(ob.x), Math.floor(ob.y), ob.scale, FG);
+    for (const group of world.obstacles) {
+      for (const c of group.cacti) {
+        drawPixels(
+          c.map,
+          Math.floor(group.x + c.dx),
+          Math.floor(c.y),
+          c.scale,
+          FG
+        );
+      }
     }
 
     // dino
