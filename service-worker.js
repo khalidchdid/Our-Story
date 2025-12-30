@@ -1,4 +1,4 @@
-const CACHE = "pong-pwa-v5";
+const CACHE = "pong-pwa-v6";
 const ASSETS = [
   "./",
   "./index.html",
