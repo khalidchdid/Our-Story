@@ -8,12 +8,20 @@
   const bestScoreEl = document.getElementById("bestScore");
   const distEl = document.getElementById("dist");
 
-  let mode = "menu";
+  // Optional rotate overlay (we'll create it from JS if not present)
+  let rotateOverlay = document.getElementById("rotateOverlay");
+
+  const BG = "#0b0f14";
+  const FG = "#e7edf6";
+  const MUTED = "#9aa7b5";
+
+  let mode = "menu"; // menu | playing | gameover
   let lastT = performance.now();
 
-  let distance = 0;
+  let score = 0;
   let lastScore = 0;
   let best = Number(localStorage.getItem("jumperBest") || 0);
+
   const input = { pressed: false };
 
   function setBest(v) {
@@ -21,16 +29,53 @@
     localStorage.setItem("jumperBest", String(best));
     bestScoreEl.textContent = String(best);
   }
-  function setDistance(v) {
-    distance = v;
-    const d = Math.floor(distance);
-    distEl.textContent = String(d);
-    if (d > best) setBest(d);
+
+  function formatScore(n) {
+    const s = String(Math.max(0, Math.floor(n)));
+    return s.padStart(5, "0");
   }
+
+  function setScore(v) {
+    score = v;
+    const s = formatScore(score);
+    distEl.textContent = s;
+    if (Math.floor(score) > best) setBest(Math.floor(score));
+  }
+
   function showOverlay(show) {
     overlay.classList.toggle("hidden", !show);
-    lastScoreEl.textContent = String(lastScore);
+    lastScoreEl.textContent = String(Math.floor(lastScore));
     bestScoreEl.textContent = String(best);
+  }
+
+  function ensureRotateOverlay() {
+    if (rotateOverlay) return;
+    rotateOverlay = document.createElement("div");
+    rotateOverlay.id = "rotateOverlay";
+    rotateOverlay.style.position = "fixed";
+    rotateOverlay.style.inset = "0";
+    rotateOverlay.style.zIndex = "10";
+    rotateOverlay.style.display = "none";
+    rotateOverlay.style.alignItems = "center";
+    rotateOverlay.style.justifyContent = "center";
+    rotateOverlay.style.background = "rgba(11,15,20,0.75)";
+    rotateOverlay.style.color = FG;
+    rotateOverlay.style.fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+    rotateOverlay.innerHTML = `
+      <div style="
+        width:min(420px,92vw);
+        background:rgba(255,255,255,0.08);
+        border:1px solid rgba(255,255,255,0.14);
+        border-radius:18px;
+        padding:18px;
+        backdrop-filter: blur(14px);
+        text-align:center;">
+        <div style="font-size:22px;font-weight:950;">Rotate your phone</div>
+        <div style="margin-top:10px;color:${MUTED};font-weight:700;font-size:13px;">
+          Jumper is best in landscape mode.
+        </div>
+      </div>`;
+    document.body.appendChild(rotateOverlay);
   }
 
   function resizeCanvasToDisplaySize() {
@@ -46,57 +91,205 @@
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
+  // --- Pixel helpers (for dino/cactus style) ---
+  function pxSize() {
+    // pixel block size in canvas pixels
+    return Math.max(2, Math.floor(canvas.height / 180));
+  }
+
+  function drawPixels(map, x, y, scale, color) {
+    ctx.fillStyle = color;
+    for (let j = 0; j < map.length; j++) {
+      const row = map[j];
+      for (let i = 0; i < row.length; i++) {
+        if (row[i] === "X") ctx.fillRect(x + i * scale, y + j * scale, scale, scale);
+      }
+    }
+  }
+
+  // Two simple running frames (pixel-ish)
+  const DINO_A = [
+    "....XXXXXX....",
+    "...XXXXXXXX...",
+    "..XXXXXXXXXX..",
+    "..XXX..XXXXXX.",
+    "..XXX..XXXXXX.",
+    "..XXXXXXXXXX..",
+    "..XXXXXXXX....",
+    "...XXXXXX.....",
+    "....XXXX......",
+    "....XXXX......",
+    "....XXXX......",
+    "....XXXX......",
+    "...XX..XX.....",
+    "..XX....XX....",
+    "..............",
+  ];
+
+  const DINO_B = [
+    "....XXXXXX....",
+    "...XXXXXXXX...",
+    "..XXXXXXXXXX..",
+    "..XXX..XXXXXX.",
+    "..XXX..XXXXXX.",
+    "..XXXXXXXXXX..",
+    "..XXXXXXXX....",
+    "...XXXXXX.....",
+    "....XXXX......",
+    "....XXXX......",
+    "....XXXX......",
+    "....XXXX......",
+    "..XX..XX......",
+    "...XX..XX.....",
+    "..............",
+  ];
+
+  const CACTUS_SMALL = [
+    "...XX....",
+    "...XX....",
+    ".XXXXXX..",
+    "...XX....",
+    "...XX....",
+    "...XX....",
+    ".XXXXXX..",
+    "...XX....",
+    "...XX....",
+    "...XX....",
+  ];
+
+  const CACTUS_BIG = [
+    "....XX.....",
+    "....XX.....",
+    "..XXXXXX...",
+    "....XX.....",
+    "....XX..XX.",
+    "....XXXXXX.",
+    "....XX..XX.",
+    "..XXXXXX...",
+    "....XX.....",
+    "....XX.....",
+    "....XX.....",
+    "..XXXXXX...",
+  ];
+
+  const CACTUS_DOUBLE = [
+    "....XX......XX....",
+    "....XX......XX....",
+    "..XXXXXX..XXXXXX..",
+    "....XX......XX....",
+    "....XX......XX....",
+    "....XX......XX....",
+    "..XXXXXX..XXXXXX..",
+    "....XX......XX....",
+    "....XX......XX....",
+    "....XX......XX....",
+  ];
+
+  // --- World ---
   let world;
 
   function resetWorld() {
     const W = canvas.width, H = canvas.height;
+    const px = pxSize();
+
+    // Landscape feels best when ground is higher and play area wide
     const groundY = Math.floor(H * 0.78);
-    const groundThickness = Math.max(10, Math.floor(H * 0.016));
+    const groundThickness = Math.max(px * 2, Math.floor(H * 0.012));
 
     world = {
-      W, H,
+      W, H, px,
       groundY,
       groundThickness,
-      speed: Math.max(360, W * 0.55),
-      accel: 12,
-      gravity: Math.max(1800, H * 3.2),
-      jumpV: Math.max(720, H * 1.25),
+
+      speed: Math.max(420, W * 0.55),  // starts fast-ish like dino
+      accel: 22,                        // ramps speed over time
+
+      gravity: Math.max(2000, H * 3.4),
+      jumpV: Math.max(780, H * 1.35),
       holdBoost: 0.55,
-      maxHold: 0.16,
+      maxHold: 0.15,
+
       runner: {
-        x: Math.floor(W * 0.18),
+        x: Math.floor(W * 0.14),
         y: groundY,
-        w: Math.max(34, Math.floor(W * 0.05)),
-        h: Math.max(42, Math.floor(H * 0.08)),
         vy: 0,
         onGround: true,
-        jumpHold: 0
+        holdT: 0,
+        animT: 0,
+        frame: 0,
+        // pixel sprite size
+        scale: px,
       },
+
       obstacles: [],
-      spawnTimer: 0,
-      nextSpawn: 0.9
+      spawnT: 0,
+      nextSpawn: 0.9,
+
+      clouds: [],
+      cloudT: 0,
+
+      // slight ground bumps
+      bumps: [],
+      bumpT: 0,
     };
 
-    setDistance(0);
+    // initial clouds
+    for (let i = 0; i < 3; i++) spawnCloud(true);
+
+    setScore(0);
+  }
+
+  function spawnCloud(initial = false) {
+    const H = world.H, W = world.W;
+    const y = Math.floor(H * (0.18 + Math.random() * 0.25));
+    const s = 0.6 + Math.random() * 1.1;
+    const x = initial ? Math.random() * W : W + 80 + Math.random() * 120;
+    world.clouds.push({ x, y, s });
+  }
+
+  function spawnBump() {
+    const x = world.W + 40 + Math.random() * 140;
+    const w = 22 + Math.random() * 40;
+    const h = 4 + Math.random() * 10;
+    world.bumps.push({ x, w, h });
   }
 
   function spawnObstacle() {
-    const { W, groundY } = world;
-    const baseW = Math.max(22, Math.floor(W * 0.03));
-    const baseH = Math.max(35, Math.floor(world.H * 0.08));
+    const W = world.W;
+    const kindRoll = Math.random();
 
-    const w = baseW * (0.9 + Math.random() * 1.3);
-    const h = baseH * (0.8 + Math.random() * 1.2);
+    let map = CACTUS_SMALL;
+    if (kindRoll > 0.7) map = CACTUS_BIG;
+    if (kindRoll > 0.88) map = CACTUS_DOUBLE;
 
-    world.obstacles.push({ x: W + w + 10, y: groundY - h, w, h });
+    const scale = world.px;
+    const ow = map[0].length * scale;
+    const oh = map.length * scale;
 
-    const minGap = 0.65, maxGap = 1.25;
-    world.nextSpawn = clamp((minGap + Math.random() * (maxGap - minGap)) * (420 / world.speed), 0.45, 1.2);
-    world.spawnTimer = 0;
+    world.obstacles.push({
+      x: W + ow + 20,
+      y: world.groundY - oh,
+      w: ow,
+      h: oh,
+      map,
+      scale,
+    });
+
+    // gaps shrink with speed (like real game)
+    const speed = world.speed;
+    const baseMin = 0.65, baseMax = 1.25;
+    const speedFactor = clamp(520 / speed, 0.55, 1.0);
+    world.nextSpawn = clamp((baseMin + Math.random() * (baseMax - baseMin)) * speedFactor, 0.45, 1.2);
+    world.spawnT = 0;
   }
 
   function aabbHit(a, b) {
-    return (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y);
+    return (
+      a.x < b.x + b.w &&
+      a.x + a.w > b.x &&
+      a.y < b.y + b.h &&
+      a.y + a.h > b.y
+    );
   }
 
   function jump() {
@@ -104,16 +297,17 @@
     if (!r.onGround) return;
     r.onGround = false;
     r.vy = -world.jumpV;
-    r.jumpHold = 0;
+    r.holdT = 0;
   }
 
   function gameOver() {
-    lastScore = Math.floor(distance);
-    if (lastScore > best) setBest(lastScore);
+    lastScore = score;
+    if (Math.floor(lastScore) > best) setBest(Math.floor(lastScore));
     mode = "gameover";
     showOverlay(true);
   }
 
+  // Input
   canvas.addEventListener("pointerdown", (e) => {
     if (mode !== "playing") return;
     e.preventDefault();
@@ -124,78 +318,183 @@
   canvas.addEventListener("pointerup", () => { input.pressed = false; });
   canvas.addEventListener("pointercancel", () => { input.pressed = false; });
 
+  // Landscape enforcement (pause in portrait)
+  function isPortrait() {
+    const rect = canvas.getBoundingClientRect();
+    return rect.height > rect.width; // portrait
+  }
+
   function update(dt) {
-    const { runner, gravity, groundY, maxHold, holdBoost } = world;
-
+    // speed ramps up
     world.speed += world.accel * dt;
-    setDistance(distance + dt * (world.speed / 18));
 
-    if (input.pressed && !runner.onGround && runner.jumpHold < maxHold && runner.vy < 0) {
-      runner.vy -= gravity * holdBoost * dt;
-      runner.jumpHold += dt;
+    // score grows with survival time (scaled so it looks like the dino counter)
+    setScore(score + dt * (world.speed / 90));
+
+    // clouds
+    world.cloudT += dt;
+    if (world.cloudT > 1.25) {
+      world.cloudT = 0;
+      if (Math.random() < 0.75) spawnCloud(false);
     }
+    for (const c of world.clouds) c.x -= (world.speed * 0.18) * dt;
+    world.clouds = world.clouds.filter(c => c.x > -200);
 
-    runner.vy += gravity * dt;
-    runner.y += runner.vy * dt;
-
-    if (runner.y >= groundY) {
-      runner.y = groundY;
-      runner.vy = 0;
-      runner.onGround = true;
+    // ground bumps
+    world.bumpT += dt;
+    if (world.bumpT > 0.55) {
+      world.bumpT = 0;
+      if (Math.random() < 0.9) spawnBump();
     }
+    for (const b of world.bumps) b.x -= world.speed * dt;
+    world.bumps = world.bumps.filter(b => b.x + b.w > -80);
 
-    world.spawnTimer += dt;
-    if (world.obstacles.length === 0 && world.spawnTimer > 0.35) spawnObstacle();
-    if (world.spawnTimer >= world.nextSpawn) spawnObstacle();
+    // obstacles spawn
+    world.spawnT += dt;
+    if (world.obstacles.length === 0 && world.spawnT > 0.35) spawnObstacle();
+    if (world.spawnT >= world.nextSpawn) spawnObstacle();
 
     for (const ob of world.obstacles) ob.x -= world.speed * dt;
-    world.obstacles = world.obstacles.filter(ob => ob.x + ob.w > -80);
+    world.obstacles = world.obstacles.filter(ob => ob.x + ob.w > -120);
 
-    const runnerBox = { x: runner.x, y: runner.y - runner.h, w: runner.w, h: runner.h };
+    // runner physics
+    const r = world.runner;
+
+    // run animation (only when on ground)
+    if (r.onGround) {
+      r.animT += dt;
+      const stepRate = clamp(world.speed / 520, 0.8, 1.8);
+      if (r.animT > (0.14 / stepRate)) {
+        r.animT = 0;
+        r.frame = 1 - r.frame;
+      }
+    } else {
+      r.frame = 0;
+    }
+
+    // hold to jump higher early in jump
+    if (input.pressed && !r.onGround && r.holdT < world.maxHold && r.vy < 0) {
+      r.vy -= world.gravity * world.holdBoost * dt;
+      r.holdT += dt;
+    }
+
+    r.vy += world.gravity * dt;
+    r.y += r.vy * dt;
+
+    if (r.y >= world.groundY) {
+      r.y = world.groundY;
+      r.vy = 0;
+      r.onGround = true;
+    }
+
+    // collisions
+    const dinoMap = (r.frame === 0 ? DINO_A : DINO_B);
+    const dinoW = dinoMap[0].length * r.scale;
+    const dinoH = dinoMap.length * r.scale;
+
+    const runnerBox = {
+      x: r.x,
+      y: r.y - dinoH,
+      w: dinoW,
+      h: dinoH,
+    };
+
     for (const ob of world.obstacles) {
-      if (aabbHit(runnerBox, ob)) { gameOver(); break; }
+      if (aabbHit(runnerBox, ob)) {
+        gameOver();
+        break;
+      }
     }
   }
 
-  function roundRect(x, y, w, h, r) {
-    r = Math.min(r, w / 2, h / 2);
+  function drawCloud(x, y, s) {
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = FG;
+    ctx.lineWidth = Math.max(2, Math.floor(world.px * 0.8));
     ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
+    const w = 40 * s;
+    const h = 16 * s;
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x + w * 0.2, y - h, x + w * 0.55, y - h, x + w * 0.62, y);
+    ctx.bezierCurveTo(x + w * 0.7, y - h * 0.3, x + w, y - h * 0.3, x + w, y);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function draw() {
-    const { W, H, groundY, groundThickness, runner, obstacles } = world;
+    ctx.imageSmoothingEnabled = false;
 
-    ctx.fillStyle = "#0b0f14";
+    const W = world.W, H = world.H;
+
+    // background
+    ctx.fillStyle = BG;
     ctx.fillRect(0, 0, W, H);
 
-    ctx.fillStyle = "#e7edf6";
-    ctx.fillRect(0, groundY, W, groundThickness);
+    // score top-right like dino
+    ctx.save();
+    ctx.fillStyle = FG;
+    ctx.globalAlpha = 0.9;
+    ctx.font = `${Math.max(14, Math.floor(H * 0.045))}px ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace`;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    // HUD already shows it, but this makes it look like the real game
+    ctx.fillText(formatScore(score), W - Math.floor(18 * (window.devicePixelRatio || 1)), Math.floor(12 * (window.devicePixelRatio || 1)));
+    ctx.restore();
 
-    ctx.fillStyle = "#e7edf6";
-    roundRect(runner.x, runner.y - runner.h, runner.w, runner.h, Math.max(6, Math.floor(runner.w * 0.25)));
-    ctx.fill();
+    // clouds
+    for (const c of world.clouds) drawCloud(c.x, c.y, c.s);
 
-    for (const ob of obstacles) {
-      roundRect(ob.x, ob.y, ob.w, ob.h, Math.max(4, Math.floor(ob.w * 0.2)));
-      ctx.fill();
+    // ground line
+    ctx.fillStyle = FG;
+    ctx.globalAlpha = 0.75;
+    ctx.fillRect(0, world.groundY, W, world.groundThickness);
+
+    // tiny ground dots (like dino)
+    ctx.globalAlpha = 0.18;
+    const dotY = world.groundY + world.groundThickness + world.px * 2;
+    for (let x = 0; x < W; x += world.px * 6) {
+      if (Math.random() < 0.35) ctx.fillRect(x, dotY + (Math.random() * world.px * 2), world.px, world.px);
     }
+
+    // bumps
+    ctx.globalAlpha = 0.35;
+    for (const b of world.bumps) {
+      ctx.fillRect(b.x, world.groundY - b.h, b.w, world.px);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // obstacles
+    for (const ob of world.obstacles) {
+      drawPixels(ob.map, Math.floor(ob.x), Math.floor(ob.y), ob.scale, FG);
+    }
+
+    // dino
+    const r = world.runner;
+    const dinoMap = (r.frame === 0 ? DINO_A : DINO_B);
+    const dinoH = dinoMap.length * r.scale;
+    drawPixels(dinoMap, Math.floor(r.x), Math.floor(r.y - dinoH), r.scale, FG);
   }
 
   function loop(now) {
     resizeCanvasToDisplaySize();
-    if (!world || world.W !== canvas.width || world.H !== canvas.height) resetWorld();
+    ensureRotateOverlay();
+
+    // show rotate overlay in portrait and pause updates
+    const portrait = isPortrait();
+    rotateOverlay.style.display = portrait ? "flex" : "none";
+
+    // rebuild world on resize
+    if (!world || world.W !== canvas.width || world.H !== canvas.height) {
+      resetWorld();
+    }
 
     const dt = Math.min(0.02, (now - lastT) / 1000);
     lastT = now;
 
-    if (mode === "playing") update(dt);
+    if (!portrait && mode === "playing") update(dt);
     draw();
+
     requestAnimationFrame(loop);
   }
 
@@ -205,11 +504,14 @@
     mode = "playing";
     showOverlay(false);
   }
+
   ["click", "pointerup", "touchend"].forEach((ev) => {
     startBtn.addEventListener(ev, startGame, { passive: false });
   });
 
+  // init
   setBest(best);
+  setScore(0);
   showOverlay(true);
   requestAnimationFrame(loop);
 })();
