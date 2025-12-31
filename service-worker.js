@@ -1,4 +1,4 @@
-const CACHE = "toy-story-v11";
+const CACHE = "toy-story-v12";
 const ASSETS = [
   "./",
   "./index.html",
