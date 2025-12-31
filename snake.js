@@ -78,8 +78,8 @@
     const maxH = H - 2 * marginY;
 
   // "divide the length by two" = half the width
-    const fw = Math.floor(maxW / 2);
-    const fh = maxH;
+    const fw = maxW;
+    const fh = Math.floor(maxH / 2);
 
   // center it
     const fx = Math.floor((W - fw) / 2);
