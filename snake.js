@@ -70,14 +70,20 @@
     const W = canvas.width;
     const H = canvas.height;
 
-    // margin so field doesn't touch edges (safe for rounded corners)
+  // keep safe margins from rounded corners
     const marginX = Math.floor(W * 0.10);
     const marginY = Math.floor(H * 0.14);
 
-    const fx = marginX;
-    const fy = marginY;
-    const fw = W - 2 * marginX;
-    const fh = H - 2 * marginY;
+    const maxW = W - 2 * marginX;
+    const maxH = H - 2 * marginY;
+
+  // "divide the length by two" = half the width
+    const fw = Math.floor(maxW / 2);
+    const fh = maxH;
+
+  // center it
+    const fx = Math.floor((W - fw) / 2);
+    const fy = Math.floor((H - fh) / 2);
 
     return { x: fx, y: fy, w: fw, h: fh };
   }
