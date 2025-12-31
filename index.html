@@ -13,12 +13,14 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="home">
-  <div class="homeWrap">
-    <div class="homeHeader">
-      <div class="homeTitle">Toy story <span id="verBadge" class="ver"></span></div>
-      <div class="homeSubtitle">Choose a game</div>
+
+<body>
+  <div class="home">
+    <div class="homeTitle">
+      Toy story <span id="verBadge" class="ver"></span>
     </div>
+
+    <div class="homeSubtitle">Choose a game</div>
 
     <div class="grid">
       <a class="gameCard" href="./pong.html">
@@ -37,28 +39,8 @@
       </a>
     </div>
 
-    <div class="footerTiny">More games soon.</div>
+    <div class="homeFooter">More games soon.</div>
   </div>
-
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./service-worker.js");
-    }
-  </script>
-
-  <script src="./version.js"></script>
-  <script>
-  // Add version next to title on the home page
-    const title =
-      document.querySelector(".homeTitle") ||
-      document.querySelector(".appTitle") ||
-      document.querySelector("h1");
-
-    if (title && !title.dataset.hasVersion) {
-      title.insertAdjacentHTML("obeforeend", ` <span class="ver">V.${window.TOY_STORY_VERSION}</span>`);
-      title.dataset.hasVersion = "1";
-    }
-  </script>
 
   <script src="./version.js"></script>
   <script>
@@ -67,6 +49,10 @@
       const el = document.getElementById("verBadge");
       if (el) el.textContent = `V.${v}`;
     })();
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js");
   </script>
 </body>
 </html>
