@@ -1,4 +1,5 @@
-const CACHE = "toy-story-v16";
+importScripts("./version.js");
+const CACHE = "toy-story-v" + self.TOY_STORY_VERSION;
 const ASSETS = [
   "./",
   "./index.html",
@@ -11,6 +12,7 @@ const ASSETS = [
   "./snake.js",
   "./manifest.webmanifest",
   "./service-worker.js"
+  "./version.js",
 ];
 
 self.addEventListener("install", (event) => {
