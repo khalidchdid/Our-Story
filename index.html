@@ -16,7 +16,7 @@
 <body class="home">
   <div class="homeWrap">
     <div class="homeHeader">
-      <div class="homeTitle">Toy story <span class="ver">V.16</span></div>
+      <div class="homeTitle">Toy story</div>
       <div class="homeSubtitle">Choose a game</div>
     </div>
 
@@ -43,6 +43,20 @@
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./service-worker.js");
+    }
+  </script>
+
+  <script src="./version.js"></script>
+  <script>
+  // Add version next to title on the home page
+    const title =
+      document.querySelector(".homeTitle") ||
+      document.querySelector(".appTitle") ||
+      document.querySelector("h1");
+
+    if (title && !title.dataset.hasVersion) {
+      title.insertAdjacentHTML("obeforeend", ` <span class="ver">V.${window.TOY_STORY_VERSION}</span>`);
+      title.dataset.hasVersion = "1";
     }
   </script>
 </body>
