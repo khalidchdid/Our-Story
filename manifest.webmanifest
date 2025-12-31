@@ -1,6 +1,6 @@
 {
-  "name": "Toy Story",
-  "short_name": "Toy Story",
+  "name": "Our Story",
+  "short_name": "Our Story",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0b0f14",
