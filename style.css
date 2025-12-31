@@ -167,6 +167,12 @@ body.home{
   font-weight:700;
   font-size:13px;
 }
+.ver{
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.65;
+  margin-left: 8px;
+}
 .footerTiny{
   margin-top:18px;
   text-align:center;
@@ -174,3 +180,4 @@ body.home{
   font-weight:700;
   font-size:12px;
 }
+
