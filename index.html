@@ -59,5 +59,14 @@
       title.dataset.hasVersion = "1";
     }
   </script>
+
+  <script src="./version.js"></script>
+  <script>
+    (function () {
+      const v = window.TOY_STORY_VERSION || "??";
+      const el = document.getElementById("verBadge");
+      if (el) el.textContent = `V.${v}`;
+    })();
+  </script>
 </body>
 </html>
