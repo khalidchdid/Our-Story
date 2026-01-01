@@ -3,6 +3,7 @@ const CACHE = "toy-story-v" + self.TOY_STORY_VERSION;
 const ASSETS = [
   "./",
   "./index.html",
+  "./games.html",
   "./pong.html",
   "./jumper.html",
   "./style.css",
