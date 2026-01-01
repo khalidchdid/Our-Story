@@ -16,6 +16,7 @@ const ASSETS = [
   "./version.js",
   "./chat.html",
   "./chat.js",
+  "./social.html",
 ];
 
 self.addEventListener("install", (event) => {
