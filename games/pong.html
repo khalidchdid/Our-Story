@@ -10,8 +10,8 @@
   <meta name="apple-mobile-web-app-title" content="Our Story" />
 
   <title>Our Story • Pong</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="../style.css">
 </head>
 <body>
   <!-- Only visible during play: streak -->
@@ -34,7 +34,7 @@
       </div>
 
       <button id="startBtn">Start</button>
-      <a class="linkBack" href="./index.html">← Back to Toy story</a>
+      <a class="linkBack" href="../index.html">← Back to Toy story</a>
       <div class="tiny">Drag to move • Score = streak</div>
     </div>
   </div>
@@ -44,7 +44,7 @@
   <script src="pong.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./service-worker.js");
+      navigator.serviceWorker.register("../service-worker.js");
     }
   </script>
 </body>
